@@ -444,6 +444,7 @@
 const REPO = 'Polawat14/writeups';
 const BRANCH = 'main';
 const API = 'https://api.github.com';
+const READ_TOKEN = ''; // ใส่ read-only token ตรงนี้
 
 const SECTIONS = [
   { id: 'ctf',        paths: ['CTF/HackTheBox','CTF/TryHackMe','CTF/PicoCTF','CTF/Other'], countId: 'count-ctf',  emptyMsg: 'No writeups yet.' },
@@ -466,7 +467,8 @@ const DIFF_MAP = {
 
 async function fetchDir(path) {
   try {
-    const r = await fetch(`${API}/repos/${REPO}/contents/${path}?ref=${BRANCH}`);
+    const headers = READ_TOKEN ? { Authorization: `token ${READ_TOKEN}` } : {};
+    const r = await fetch(`${API}/repos/${REPO}/contents/${path}?ref=${BRANCH}`, { headers });
     if (!r.ok) return [];
     const data = await r.json();
     return Array.isArray(data) ? data.filter(f => f.name.endsWith('.md') && !f.name.startsWith('_')) : [];
