@@ -295,6 +295,19 @@
       text-decoration: none;
     }
 
+    /* ── Loading ── */
+    .loading {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--text3);
+      padding: 1.5rem;
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      animation: blink 1.2s ease-in-out infinite;
+    }
+    @keyframes blink { 0%,100%{opacity:.4} 50%{opacity:1} }
+
     /* ── Footer ── */
     footer {
       text-align: center;
@@ -369,10 +382,7 @@
         <div class="section-dot"></div>
         <div class="section-title">CTF Writeups</div>
       </div>
-      <div class="empty">
-        <span>~/CTF $ ls</span><br><br>
-        No writeups yet. Add files to <span>CTF/HackTheBox/</span> or <span>CTF/TryHackMe/</span>
-      </div>
+      <div id="cards-ctf"><div class="loading">fetching writeups...</div></div>
     </div>
 
     <!-- Pentest -->
@@ -381,10 +391,7 @@
         <div class="section-dot"></div>
         <div class="section-title">Pentest Notes</div>
       </div>
-      <div class="empty">
-        <span>~/Pentest $ ls</span><br><br>
-        No reports yet. Add files to <span>Pentest/Web/</span> or <span>Pentest/AD/</span>
-      </div>
+      <div id="cards-pentest"><div class="loading">fetching writeups...</div></div>
     </div>
 
     <!-- Bug Bounty -->
@@ -393,10 +400,7 @@
         <div class="section-dot"></div>
         <div class="section-title">Bug Bounty</div>
       </div>
-      <div class="empty">
-        <span>~/BugBounty $ ls</span><br><br>
-        No reports yet. Add sanitized reports to <span>BugBounty/Reports/</span>
-      </div>
+      <div id="cards-bugbounty"><div class="loading">fetching writeups...</div></div>
     </div>
 
     <!-- Research -->
@@ -405,10 +409,7 @@
         <div class="section-dot"></div>
         <div class="section-title">Research &amp; Notes</div>
       </div>
-      <div class="empty">
-        <span>~/Research $ ls</span><br><br>
-        No notes yet. Add files to <span>Research/Techniques/</span> or <span>Research/Tools/</span>
-      </div>
+      <div id="cards-research"><div class="loading">fetching writeups...</div></div>
     </div>
 
     <!-- About -->
@@ -439,5 +440,114 @@
     © 2026 <a href="https://github.com/Polawat14">Polawat14</a> &nbsp;·&nbsp; Built with GitHub Pages
   </footer>
 
+<script>
+const REPO = 'Polawat14/writeups';
+const BRANCH = 'main';
+const API = 'https://api.github.com';
+
+const SECTIONS = [
+  { id: 'ctf',        paths: ['CTF/HackTheBox','CTF/TryHackMe','CTF/PicoCTF','CTF/Other'], countId: 'count-ctf',  emptyMsg: 'No writeups yet.' },
+  { id: 'pentest',    paths: ['Pentest/Web','Pentest/Network','Pentest/AD','Pentest/Mobile'], countId: 'count-pt',  emptyMsg: 'No reports yet.' },
+  { id: 'bugbounty',  paths: ['BugBounty/Reports'],                                          countId: 'count-bb',  emptyMsg: 'No reports yet.' },
+  { id: 'research',   paths: ['Research/Techniques','Research/Tools','Research/CVE'],        countId: 'count-res', emptyMsg: 'No notes yet.' },
+];
+
+const TAG_MAP = {
+  'HackTheBox': 'tag-htb', 'TryHackMe': 'tag-thm', 'PicoCTF': 'tag-pico',
+  'Other': 'tag-ctf', 'Web': 'tag-pt', 'Network': 'tag-pt', 'AD': 'tag-pt',
+  'Mobile': 'tag-pt', 'Reports': 'tag-bb', 'Techniques': 'tag-res',
+  'Tools': 'tag-res', 'CVE': 'tag-res',
+};
+
+const DIFF_MAP = {
+  'easy':'diff-easy','medium':'diff-medium','hard':'diff-hard','insane':'diff-insane',
+  'low':'diff-easy','info':'diff-easy','high':'diff-medium','critical':'diff-hard',
+};
+
+async function fetchDir(path) {
+  try {
+    const r = await fetch(`${API}/repos/${REPO}/contents/${path}?ref=${BRANCH}`);
+    if (!r.ok) return [];
+    const data = await r.json();
+    return Array.isArray(data) ? data.filter(f => f.name.endsWith('.md') && !f.name.startsWith('_')) : [];
+  } catch { return []; }
+}
+
+function parseMeta(filename, path) {
+  // Extract from filename: YYYY-MM-DD-Title.md or Title.md
+  const name = filename.replace(/\.md$/, '');
+  const dateMatch = name.match(/^(\d{4}-\d{2}-\d{2})-(.+)$/);
+  const date = dateMatch ? dateMatch[1] : '';
+  const rawTitle = dateMatch ? dateMatch[2] : name;
+  const title = rawTitle.replace(/-/g, ' ');
+
+  // Detect difficulty from title
+  let diff = '', diffClass = '';
+  const lower = title.toLowerCase();
+  for (const [k, v] of Object.entries(DIFF_MAP)) {
+    if (lower.includes(k)) { diff = k; diffClass = v; break; }
+  }
+
+  // Platform tag from path
+  const parts = path.split('/');
+  const platform = parts[parts.length - 1];
+  const tagClass = TAG_MAP[platform] || 'tag-ctf';
+
+  return { title, date, platform, tagClass, diff, diffClass, path, filename };
+}
+
+function makeCard(meta, fileUrl) {
+  const diffHtml = meta.diff
+    ? `<span class="diff ${meta.diffClass}">${meta.diff}</span>`
+    : '';
+  return `
+    <a class="card" href="${fileUrl}" target="_blank">
+      <div class="card-top">
+        <span class="tag ${meta.tagClass}">${meta.platform}</span>
+        ${diffHtml}
+      </div>
+      <div class="card-title">${meta.title}</div>
+      <div class="card-meta">${meta.date}</div>
+    </a>`;
+}
+
+function makeEmpty(msg, paths) {
+  return `<div class="empty"><span>$ ls</span><br><br>${msg} Add files to <span>${paths[0]}/</span></div>`;
+}
+
+async function loadSection(sec) {
+  const container = document.getElementById(`cards-${sec.id}`);
+  const countEl = document.getElementById(sec.countId);
+  let allFiles = [];
+
+  for (const path of sec.paths) {
+    const files = await fetchDir(path);
+    files.forEach(f => allFiles.push({ ...f, dirPath: path }));
+  }
+
+  // Sort by date desc (filename-based)
+  allFiles.sort((a, b) => b.name.localeCompare(a.name));
+
+  if (allFiles.length === 0) {
+    container.innerHTML = makeEmpty(sec.emptyMsg, sec.paths);
+    return;
+  }
+
+  countEl.textContent = allFiles.length;
+
+  const cards = allFiles.map(f => {
+    const meta = parseMeta(f.name, f.dirPath);
+    return makeCard(meta, f.html_url);
+  }).join('');
+
+  container.innerHTML = `<div class="cards">${cards}</div>`;
+}
+
+async function init() {
+  await Promise.all(SECTIONS.map(loadSection));
+}
+
+init();
+</script>
 </body>
 </html>
