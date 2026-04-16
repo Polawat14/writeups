@@ -1,0 +1,83 @@
+name: Build Writeup Index
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate writeups.json
+        run: |
+          python3 << 'PYEOF'
+          import os, json, re
+          from datetime import datetime
+
+          SECTIONS = {
+            'CTF/HackTheBox':      {'category': 'CTF', 'platform': 'HackTheBox',  'tag': 'tag-htb'},
+            'CTF/TryHackMe':       {'category': 'CTF', 'platform': 'TryHackMe',   'tag': 'tag-thm'},
+            'CTF/PicoCTF':         {'category': 'CTF', 'platform': 'PicoCTF',     'tag': 'tag-pico'},
+            'CTF/Other':           {'category': 'CTF', 'platform': 'Other',        'tag': 'tag-ctf'},
+            'Pentest/Web':         {'category': 'Pentest', 'platform': 'Web',      'tag': 'tag-pt'},
+            'Pentest/Network':     {'category': 'Pentest', 'platform': 'Network',  'tag': 'tag-pt'},
+            'Pentest/AD':          {'category': 'Pentest', 'platform': 'AD',       'tag': 'tag-pt'},
+            'Pentest/Mobile':      {'category': 'Pentest', 'platform': 'Mobile',   'tag': 'tag-pt'},
+            'BugBounty/Reports':   {'category': 'BugBounty', 'platform': 'Reports','tag': 'tag-bb'},
+            'Research/Techniques': {'category': 'Research', 'platform': 'Techniques','tag': 'tag-res'},
+            'Research/Tools':      {'category': 'Research', 'platform': 'Tools',   'tag': 'tag-res'},
+            'Research/CVE':        {'category': 'Research', 'platform': 'CVE',     'tag': 'tag-res'},
+          }
+
+          writeups = []
+          for path, meta in SECTIONS.items():
+            if not os.path.isdir(path):
+              continue
+            for fname in sorted(os.listdir(path), reverse=True):
+              if not fname.endswith('.md') or fname.startswith('_'):
+                continue
+              name = fname[:-3]
+              date_match = re.match(r'^(\d{4}-\d{2}-\d{2})-(.+)$', name)
+              date = date_match.group(1) if date_match else ''
+              raw_title = date_match.group(2) if date_match else name
+              title = raw_title.replace('-', ' ')
+
+              diff = ''
+              diff_class = ''
+              for k, v in [('easy','diff-easy'),('medium','diff-medium'),('hard','diff-hard'),('insane','diff-insane'),('low','diff-easy'),('high','diff-medium'),('critical','diff-hard')]:
+                if k in title.lower():
+                  diff = k.capitalize()
+                  diff_class = v
+                  break
+
+              writeups.append({
+                'title': title,
+                'date': date,
+                'file': path + '/' + fname,
+                'platform': meta['platform'],
+                'category': meta['category'],
+                'tag': meta['tag'],
+                'diff': diff,
+                'diffClass': diff_class,
+              })
+
+          with open('writeups.json', 'w') as f:
+            json.dump(writeups, f, ensure_ascii=False, indent=2)
+
+          print(f"Generated writeups.json with {len(writeups)} entries")
+          PYEOF
+
+      - name: Commit writeups.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add writeups.json
+          git diff --staged --quiet || git commit -m "ci: update writeups.json"
+          git push
