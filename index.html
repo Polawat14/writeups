@@ -1,8 +1,443 @@
-﻿<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>Security Writeups</title></head>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Security Writeups — Polawat14</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #1a1d1a;
+      --bg2:      #222622;
+      --bg3:      #2a302a;
+      --border:   #2e342e;
+      --border2:  #3a433a;
+      --text:     #d4d8d0;
+      --text2:    #8a9086;
+      --text3:    #6b7268;
+      --green:    #6aad6a;
+      --green2:   #4a7c4a;
+      --green3:   #1a3320;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1.125rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      position: sticky;
+      top: 0;
+      background: rgba(26,29,26,0.95);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+    }
+
+    .logo {
+      width: 36px; height: 36px;
+      border: 1.5px solid var(--green);
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; font-weight: 700;
+      color: var(--green);
+      flex-shrink: 0;
+    }
+
+    .site-info .site-title { font-size: 15px; font-weight: 500; color: var(--text); }
+    .site-info .site-sub   { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; margin-top: 1px; }
+
+    nav { margin-left: auto; display: flex; gap: 1.75rem; }
+    nav a {
+      color: var(--text3);
+      font-size: 12px;
+      text-decoration: none;
+      font-family: 'JetBrains Mono', monospace;
+      transition: color .15s;
+    }
+    nav a:hover { color: var(--green); }
+
+    /* ── Hero ── */
+    .hero {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 3rem 2rem 2rem;
+    }
+
+    .prompt {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: var(--green2);
+      margin-bottom: .75rem;
+    }
+    .prompt::before { content: '> '; color: var(--green); }
+
+    .hero h1 {
+      font-size: 30px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.25;
+      margin-bottom: .625rem;
+    }
+    .hero h1 span { color: var(--green); }
+
+    .hero-divider {
+      width: 32px; height: 2px;
+      background: var(--green2);
+      margin: .875rem 0;
+    }
+
+    .hero p {
+      color: var(--text2);
+      font-size: 14px;
+      max-width: 520px;
+      line-height: 1.75;
+    }
+
+    /* ── Stats ── */
+    .stats {
+      max-width: 900px;
+      margin: 1.75rem auto 0;
+      padding: 0 2rem;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    .stat {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .875rem;
+      text-align: center;
+      transition: border-color .15s;
+    }
+    .stat:hover { border-color: var(--green2); }
+
+    .stat-num {
+      font-size: 26px;
+      font-weight: 500;
+      color: var(--green);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: var(--text3);
+      margin-top: 3px;
+      font-family: 'JetBrains Mono', monospace;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    /* ── Sections ── */
+    .section {
+      max-width: 900px;
+      margin: 2.25rem auto 0;
+      padding: 0 2rem;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      margin-bottom: 1rem;
+      padding-bottom: .5rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .section-dot {
+      width: 6px; height: 6px;
+      background: var(--green2);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .section-title {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+
+    /* ── Cards ── */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1.125rem;
+      transition: border-color .15s;
+      text-decoration: none;
+      display: block;
+      color: inherit;
+    }
+    .card:hover { border-color: var(--green); }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: .625rem;
+    }
+
+    .tag {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-weight: 500;
+    }
+    .tag-htb  { background: #1a3320; color: #6aad6a; }
+    .tag-thm  { background: #1a2433; color: #6a9acd; }
+    .tag-pico { background: #251a33; color: #9a6acd; }
+    .tag-bb   { background: #332a15; color: #b89a4a; }
+    .tag-pt   { background: #2a1a2a; color: #aa6aaa; }
+    .tag-res  { background: #1a2e2e; color: #4aadad; }
+    .tag-ctf  { background: #1e2a1a; color: #7acd6a; }
+
+    .diff {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .diff-easy   { color: #6aad6a; background: #152015; }
+    .diff-medium { color: #b89a4a; background: #2a2010; }
+    .diff-hard   { color: #cd6a6a; background: #2a1515; }
+    .diff-insane { color: #cd4acd; background: #2a152a; }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 500;
+      color: #c8ccc4;
+      margin-bottom: .25rem;
+    }
+    .card-meta {
+      font-size: 11px;
+      color: var(--text3);
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .pills {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin-top: .625rem;
+    }
+    .pill {
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text3);
+      background: var(--bg3);
+      padding: 1px 6px;
+      border-radius: 3px;
+    }
+
+    /* ── Empty state ── */
+    .empty {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: var(--text3);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      border: 1px dashed var(--border2);
+      border-radius: 8px;
+    }
+    .empty span { color: var(--green2); }
+
+    /* ── About ── */
+    .about-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .about-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.125rem;
+    }
+    .about-card .label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text3);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: .375rem;
+    }
+    .about-card .value {
+      font-size: 13px;
+      color: var(--text);
+    }
+    .about-card .value a {
+      color: var(--green);
+      text-decoration: none;
+    }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 2rem;
+      color: #3d4440;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      border-top: 1px solid var(--border);
+      margin-top: 3rem;
+    }
+    footer a { color: var(--green2); text-decoration: none; }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      header { padding: 1rem; }
+      nav { gap: 1rem; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .cards { grid-template-columns: 1fr; }
+      .about-grid { grid-template-columns: 1fr; }
+      .hero { padding: 2rem 1rem 1.5rem; }
+      .section { padding: 0 1rem; }
+      .stats { padding: 0 1rem; }
+    }
+  </style>
+</head>
 <body>
-<h1>Security Writeups</h1>
-<p>CTF · Pentest · Bug Bounty · Research</p>
+
+  <header>
+    <div class="logo">SW</div>
+    <div class="site-info">
+      <div class="site-title">Security Writeups</div>
+      <div class="site-sub">polawat14.github.io/writeups</div>
+    </div>
+    <nav>
+      <a href="#ctf">CTF</a>
+      <a href="#pentest">Pentest</a>
+      <a href="#bugbounty">Bug Bounty</a>
+      <a href="#research">Research</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div class="prompt">cat README.md</div>
+      <h1>Security<br><span>Writeups &amp; Research</span></h1>
+      <div class="hero-divider"></div>
+      <p>CTF solutions, penetration testing notes, bug bounty reports, and vulnerability research — documented, reproducible, and shared.</p>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-num" id="count-ctf">0</div>
+        <div class="stat-label">CTF</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="count-pt">0</div>
+        <div class="stat-label">Pentest</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="count-bb">0</div>
+        <div class="stat-label">Bug Bounty</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="count-res">0</div>
+        <div class="stat-label">Research</div>
+      </div>
+    </div>
+
+    <!-- CTF -->
+    <div class="section" id="ctf">
+      <div class="section-header">
+        <div class="section-dot"></div>
+        <div class="section-title">CTF Writeups</div>
+      </div>
+      <div class="empty">
+        <span>~/CTF $ ls</span><br><br>
+        No writeups yet. Add files to <span>CTF/HackTheBox/</span> or <span>CTF/TryHackMe/</span>
+      </div>
+    </div>
+
+    <!-- Pentest -->
+    <div class="section" id="pentest">
+      <div class="section-header">
+        <div class="section-dot"></div>
+        <div class="section-title">Pentest Notes</div>
+      </div>
+      <div class="empty">
+        <span>~/Pentest $ ls</span><br><br>
+        No reports yet. Add files to <span>Pentest/Web/</span> or <span>Pentest/AD/</span>
+      </div>
+    </div>
+
+    <!-- Bug Bounty -->
+    <div class="section" id="bugbounty">
+      <div class="section-header">
+        <div class="section-dot"></div>
+        <div class="section-title">Bug Bounty</div>
+      </div>
+      <div class="empty">
+        <span>~/BugBounty $ ls</span><br><br>
+        No reports yet. Add sanitized reports to <span>BugBounty/Reports/</span>
+      </div>
+    </div>
+
+    <!-- Research -->
+    <div class="section" id="research">
+      <div class="section-header">
+        <div class="section-dot"></div>
+        <div class="section-title">Research &amp; Notes</div>
+      </div>
+      <div class="empty">
+        <span>~/Research $ ls</span><br><br>
+        No notes yet. Add files to <span>Research/Techniques/</span> or <span>Research/Tools/</span>
+      </div>
+    </div>
+
+    <!-- About -->
+    <div class="section" style="margin-top:2.25rem">
+      <div class="section-header">
+        <div class="section-dot"></div>
+        <div class="section-title">About</div>
+      </div>
+      <div class="about-grid">
+        <div class="about-card">
+          <div class="label">Focus</div>
+          <div class="value">Red Team · Web AppSec · AD</div>
+        </div>
+        <div class="about-card">
+          <div class="label">Platforms</div>
+          <div class="value">HackTheBox · TryHackMe · Bug Bounty</div>
+        </div>
+        <div class="about-card">
+          <div class="label">GitHub</div>
+          <div class="value"><a href="https://github.com/Polawat14" target="_blank">github.com/Polawat14</a></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    © 2026 <a href="https://github.com/Polawat14">Polawat14</a> &nbsp;·&nbsp; Built with GitHub Pages
+  </footer>
+
 </body>
 </html>
