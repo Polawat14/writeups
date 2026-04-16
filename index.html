@@ -500,8 +500,9 @@ function makeCard(meta, fileUrl) {
   const diffHtml = meta.diff
     ? `<span class="diff ${meta.diffClass}">${meta.diff}</span>`
     : '';
+  const viewerUrl = `writeup.html?file=${encodeURIComponent(meta.path + '/' + meta.filename)}`;
   return `
-    <a class="card" href="${fileUrl}" target="_blank">
+    <a class="card" href="${viewerUrl}">
       <div class="card-top">
         <span class="tag ${meta.tagClass}">${meta.platform}</span>
         ${diffHtml}

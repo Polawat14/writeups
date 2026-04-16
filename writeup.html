@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Writeup — Security Writeups</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:     #1a1d1a;
+      --bg2:    #222622;
+      --bg3:    #2a302a;
+      --border: #2e342e;
+      --text:   #d4d8d0;
+      --text2:  #8a9086;
+      --text3:  #6b7268;
+      --green:  #6aad6a;
+      --green2: #4a7c4a;
+      --red:    #cd6a6a;
+      --amber:  #b89a4a;
+      --blue:   #6a9acd;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 15px; line-height: 1.7; min-height: 100vh; }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex; align-items: center; gap: 1rem;
+      background: rgba(26,29,26,0.97);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { width: 32px; height: 32px; border: 1.5px solid var(--green); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--green); flex-shrink: 0; text-decoration: none; }
+    .back { color: var(--text3); font-size: 12px; font-family: 'JetBrains Mono', monospace; text-decoration: none; display: flex; align-items: center; gap: 4px; }
+    .back:hover { color: var(--green); }
+    .header-path { margin-left: auto; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px; }
+
+    .container { max-width: 760px; margin: 0 auto; padding: 2.5rem 2rem 4rem; }
+
+    /* ── Loading / Error ── */
+    .state { text-align: center; padding: 4rem 1rem; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text3); }
+    .state.error { color: var(--red); }
+
+    /* ── Meta bar ── */
+    .meta-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+    .tag { font-size: 11px; font-family: 'JetBrains Mono', monospace; padding: 3px 8px; border-radius: 3px; font-weight: 500; }
+    .tag-htb  { background: #1a3320; color: #6aad6a; }
+    .tag-thm  { background: #1a2433; color: #6a9acd; }
+    .tag-bb   { background: #332a15; color: #b89a4a; }
+    .tag-pt   { background: #2a1a2a; color: #aa6aaa; }
+    .tag-res  { background: #1a2e2e; color: #4aadad; }
+    .tag-ctf  { background: #1e2a1a; color: #7acd6a; }
+    .meta-date { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text3); margin-left: auto; }
+
+    /* ── Markdown content ── */
+    .md-body h1 { font-size: 24px; font-weight: 500; color: var(--text); margin: 0 0 1.5rem; line-height: 1.3; }
+    .md-body h2 { font-size: 18px; font-weight: 500; color: var(--text); margin: 2rem 0 .75rem; padding-bottom: .375rem; border-bottom: 1px solid var(--border); }
+    .md-body h3 { font-size: 15px; font-weight: 500; color: var(--green); margin: 1.5rem 0 .5rem; font-family: 'JetBrains Mono', monospace; }
+    .md-body h4 { font-size: 13px; font-weight: 500; color: var(--text2); margin: 1rem 0 .375rem; text-transform: uppercase; letter-spacing: .05em; font-family: 'JetBrains Mono', monospace; }
+    .md-body p { margin-bottom: 1rem; color: var(--text2); }
+    .md-body a { color: var(--green); text-decoration: none; }
+    .md-body a:hover { text-decoration: underline; }
+    .md-body ul, .md-body ol { margin: .5rem 0 1rem 1.5rem; color: var(--text2); }
+    .md-body li { margin-bottom: .25rem; }
+    .md-body blockquote { border-left: 3px solid var(--green2); margin: 1rem 0; padding: .5rem 1rem; background: var(--bg2); border-radius: 0 6px 6px 0; color: var(--text2); font-size: 13px; }
+    .md-body blockquote p { margin: 0; }
+    .md-body hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    .md-body strong { color: var(--text); font-weight: 500; }
+    .md-body em { color: var(--text2); }
+    .md-body img { max-width: 100%; border-radius: 6px; border: 1px solid var(--border); margin: 1rem 0; display: block; }
+
+    /* inline code */
+    .md-body code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 1px 5px;
+      color: var(--green);
+    }
+
+    /* code blocks */
+    .md-body pre {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      overflow-x: auto;
+      margin: 1rem 0;
+      position: relative;
+    }
+    .md-body pre code {
+      background: none; border: none; padding: 0;
+      font-size: 12px; color: var(--text2); line-height: 1.7;
+    }
+
+    /* table */
+    .md-body table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 13px; }
+    .md-body th { background: var(--bg2); border: 1px solid var(--border); padding: 8px 12px; text-align: left; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; }
+    .md-body td { border: 1px solid var(--border); padding: 8px 12px; color: var(--text2); }
+    .md-body tr:hover td { background: var(--bg2); }
+
+    /* copy button on pre */
+    .pre-wrap { position: relative; }
+    .copy-btn {
+      position: absolute; top: 8px; right: 8px;
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--text3); font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; padding: 3px 8px; border-radius: 3px; cursor: pointer;
+      transition: all .15s;
+    }
+    .copy-btn:hover { border-color: var(--green2); color: var(--green); }
+    .copy-btn.copied { color: var(--green); border-color: var(--green2); }
+
+    @media (max-width: 600px) {
+      .container { padding: 1.5rem 1rem 3rem; }
+      header { padding: .875rem 1rem; }
+      .header-path { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="index.html">SW</a>
+  <a class="back" href="index.html">← back</a>
+  <div class="header-path" id="headerPath"></div>
+</header>
+
+<div class="container">
+  <div class="meta-bar" id="metaBar" style="display:none"></div>
+  <div id="content">
+    <div class="state" id="loadingState">loading writeup...</div>
+  </div>
+</div>
+
+<script>
+const REPO = 'Polawat14/writeups';
+const RAW  = `https://raw.githubusercontent.com/${REPO}/main`;
+const API  = `https://api.github.com/repos/${REPO}/commits`;
+
+const TAG_MAP = {
+  'HackTheBox':'tag-htb','TryHackMe':'tag-thm','PicoCTF':'tag-ctf',
+  'Other':'tag-ctf','Web':'tag-pt','Network':'tag-pt','AD':'tag-pt',
+  'Mobile':'tag-pt','Reports':'tag-bb','Techniques':'tag-res',
+  'Tools':'tag-res','CVE':'tag-res',
+};
+
+function getParam(key) {
+  return new URLSearchParams(window.location.search).get(key);
+}
+
+function getPlatform(path) {
+  const parts = path.split('/');
+  return parts.length >= 2 ? parts[parts.length - 2] : '';
+}
+
+function getDate(path) {
+  const name = path.split('/').pop().replace(/\.md$/, '');
+  const m = name.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : '';
+}
+
+function addCopyButtons() {
+  document.querySelectorAll('.md-body pre').forEach(pre => {
+    const wrap = document.createElement('div');
+    wrap.className = 'pre-wrap';
+    pre.parentNode.insertBefore(wrap, pre);
+    wrap.appendChild(pre);
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = 'copy';
+    btn.onclick = () => {
+      navigator.clipboard.writeText(pre.querySelector('code')?.innerText || pre.innerText);
+      btn.textContent = 'copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+    };
+    wrap.appendChild(btn);
+  });
+}
+
+async function load() {
+  const filePath = getParam('file');
+  if (!filePath) {
+    document.getElementById('loadingState').className = 'state error';
+    document.getElementById('loadingState').textContent = 'No file specified. ?file=CTF/HackTheBox/name.md';
+    return;
+  }
+
+  document.getElementById('headerPath').textContent = filePath;
+  document.title = filePath.split('/').pop().replace(/\.md$/, '') + ' — Security Writeups';
+
+  try {
+    const res = await fetch(`${RAW}/${filePath}`);
+    if (!res.ok) throw new Error(`${res.status}`);
+    const md = await res.text();
+
+    // Render markdown
+    const html = marked.parse(md);
+    const contentEl = document.getElementById('content');
+    contentEl.innerHTML = `<div class="md-body">${html}</div>`;
+    addCopyButtons();
+
+    // Meta bar
+    const platform = getPlatform(filePath);
+    const date = getDate(filePath);
+    const tagClass = TAG_MAP[platform] || 'tag-ctf';
+    const metaBar = document.getElementById('metaBar');
+    metaBar.style.display = 'flex';
+    metaBar.innerHTML = `
+      <span class="tag ${tagClass}">${platform}</span>
+      <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">${filePath}</span>
+      ${date ? `<span class="meta-date">${date}</span>` : ''}
+    `;
+
+  } catch (e) {
+    document.getElementById('loadingState').className = 'state error';
+    document.getElementById('loadingState').textContent = `Failed to load: ${e.message}`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>
