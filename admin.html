@@ -108,6 +108,32 @@
     .cat-pt    { color: #aa6aaa; }
     .cat-res   { color: #4aadad; }
 
+    .img-drop-zone {
+      border: 1px dashed var(--border2); border-radius: 6px;
+      padding: .625rem 1rem; margin-bottom: 6px;
+      background: var(--bg3); text-align: center; transition: border-color .15s;
+    }
+    .img-drop-zone.drag-over { border-color: var(--green); background: #1a2e1a; }
+    #imgStatus { color: var(--green2); margin-left: 8px; }
+
+
+    /* ── Tabs ── */
+    .tab-bar { display: flex; gap: 6px; margin-bottom: 1rem; }
+    .tab-btn { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; color: var(--text3); font-family: "JetBrains Mono", monospace; font-size: 12px; padding: 7px 16px; cursor: pointer; transition: all .15s; }
+    .tab-btn:hover { border-color: var(--green2); color: var(--text); }
+    .tab-btn.active { background: var(--bg3); border-color: var(--green2); color: var(--green); }
+
+    /* ── Manage list ── */
+    .manage-loading { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text3); padding: 1rem; text-align: center; }
+    .manage-item { display: flex; align-items: center; gap: 10px; padding: .75rem 0; border-bottom: 1px solid var(--border); }
+    .manage-item:last-child { border-bottom: none; }
+    .manage-path { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text2); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .manage-path span { color: var(--text3); }
+    .manage-date { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--text3); flex-shrink: 0; }
+    .btn-delete { background: transparent; border: 1px solid #4d2a2a; color: var(--red); font-family: "JetBrains Mono", monospace; font-size: 11px; padding: 4px 10px; border-radius: 4px; cursor: pointer; flex-shrink: 0; transition: all .15s; }
+    .btn-delete:hover { background: #2a1515; border-color: var(--red); }
+    .manage-empty { font-family: "JetBrains Mono", monospace; font-size: 12px; color: var(--text3); padding: 1.5rem; text-align: center; }
+
     @media (max-width: 600px) {
       .container { padding: 1rem; }
       .form-row { grid-template-columns: 1fr; }
@@ -144,8 +170,14 @@
     </div>
   </div>
 
-  <!-- Form -->
-  <div class="form-card">
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn active" id="tab-btn-new" onclick="switchTab('new')">+ New Writeup</button>
+    <button class="tab-btn" id="tab-btn-manage" onclick="switchTab('manage')">Manage Writeups</button>
+  </div>
+
+  <!-- New Writeup Tab -->
+  <div id="tab-new" class="form-card">
     <div class="form-title">New Writeup</div>
 
     <div class="form-row">
@@ -199,7 +231,26 @@
 
     <div class="form-group">
       <label>Content (Markdown)</label>
-      <textarea id="content" placeholder="## TL;DR&#10;&#10;## Enumeration&#10;&#10;## Exploitation&#10;&#10;## Privilege Escalation&#10;&#10;## Flags"></textarea>
+      <div class="img-drop-zone" id="dropZone"
+        ondragover="event.preventDefault();this.classList.add('drag-over')"
+        ondragleave="this.classList.remove('drag-over')"
+        ondrop="event.preventDefault();this.classList.remove('drag-over');uploadImage(event.dataTransfer.files[0])">
+        <span style="font-size:12px;color:var(--text3);font-family:'JetBrains Mono',monospace">
+          drag &amp; drop image here — or <label for="imgInput" style="color:var(--green);cursor:pointer">browse</label>
+          <span id="imgStatus"></span>
+        </span>
+        <input type="file" id="imgInput" accept="image/*" style="display:none" onchange="uploadImage(this.files[0])">
+      </div>
+      <textarea id="content" placeholder="## TL;DR
+
+## Enumeration
+
+## Exploitation
+
+## Privilege Escalation
+
+## Flags" onpaste="handlePaste(event)"></textarea>
+      <div style="font-size:11px;color:var(--text3);font-family:JetBrains Mono,monospace;margin-top:4px">tip: paste image (ctrl+v) directly → auto-uploads to repo</div>
     </div>
 
     <div class="btn-row">
@@ -218,6 +269,15 @@
     <pre id="previewContent"></pre>
   </div>
 
+  <!-- Manage Tab -->
+  <div id="tab-manage" style="display:none">
+    <div class="form-card">
+      <div class="form-title">Manage Writeups</div>
+      <div id="manageList"><div class="manage-loading">Loading writeups...</div></div>
+    </div>
+  </div>
+
+
 </div>
 
 <script>
@@ -227,6 +287,91 @@
 
   // ── Token ──────────────────────────────
   function getToken() { return localStorage.getItem('gh_admin_token') || ''; }
+
+
+  // ── Tabs ──────────────────────────────
+  function switchTab(tab) {
+    document.getElementById('tab-new').style.display = tab === 'new' ? 'block' : 'none';
+    document.getElementById('tab-manage').style.display = tab === 'manage' ? 'block' : 'none';
+    document.getElementById('tab-btn-new').classList.toggle('active', tab === 'new');
+    document.getElementById('tab-btn-manage').classList.toggle('active', tab === 'manage');
+    if (tab === 'manage') loadManageList();
+  }
+
+  // ── Manage List ───────────────────────
+  const ALL_PATHS = [
+    'CTF/HackTheBox','CTF/TryHackMe','CTF/PicoCTF','CTF/Other',
+    'Pentest/Web','Pentest/Network','Pentest/AD','Pentest/Mobile',
+    'BugBounty/Reports','Research/Techniques','Research/Tools','Research/CVE'
+  ];
+
+  async function fetchDirAdmin(path) {
+    const token = getToken();
+    try {
+      const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${path}?ref=${BRANCH}`, {
+        headers: { Authorization: `token ${token}`, Accept: 'application/vnd.github.v3+json' }
+      });
+      if (!r.ok) return [];
+      const data = await r.json();
+      return Array.isArray(data) ? data.filter(f => f.name.endsWith('.md') && !f.name.startsWith('_')) : [];
+    } catch { return []; }
+  }
+
+  async function loadManageList() {
+    const list = document.getElementById('manageList');
+    list.innerHTML = '<div class="manage-loading">Loading writeups...</div>';
+    let allFiles = [];
+    for (const path of ALL_PATHS) {
+      const files = await fetchDirAdmin(path);
+      files.forEach(f => allFiles.push({ ...f, dirPath: path }));
+    }
+    if (allFiles.length === 0) {
+      list.innerHTML = '<div class="manage-empty">No writeups found.</div>';
+      return;
+    }
+    allFiles.sort((a, b) => b.name.localeCompare(a.name));
+    list.innerHTML = allFiles.map(f => {
+      const dateMatch = f.name.match(/^(\d{4}-\d{2}-\d{2})-(.+)\.md$/);
+      const date = dateMatch ? dateMatch[1] : '';
+      const title = dateMatch ? dateMatch[2].replace(/-/g, ' ') : f.name.replace('.md','');
+      const fullPath = f.dirPath + '/' + f.name;
+      return `<div class="manage-item" id="item-${f.sha.slice(0,8)}">
+        <div class="manage-path"><span>${f.dirPath}/</span>${f.name}</div>
+        <div class="manage-date">${date}</div>
+        <button class="btn-delete" onclick='confirmDelete(${JSON.stringify(fullPath)}, ${JSON.stringify(f.sha)}, ${JSON.stringify(title)}, ${JSON.stringify(f.sha.slice(0,8))})'>delete</button>
+      </div>`;
+    }).join('');
+  }
+
+  async function confirmDelete(path, sha, title, shortSha) {
+    if (!confirm('Delete "' + title + '"?\n\n' + path + '\n\nThis cannot be undone.')) return;
+    const token = getToken();
+    if (!token) { alert('No token configured.'); return; }
+    const btn = document.querySelector('#item-' + shortSha + ' .btn-delete');
+    if (btn) { btn.disabled = true; btn.textContent = 'deleting...'; }
+    try {
+      const res = await fetch('https://api.github.com/repos/' + REPO + '/contents/' + path, {
+        method: 'DELETE',
+        headers: {
+          Authorization: 'token ' + token,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: 'remove: ' + title, sha: sha, branch: BRANCH }),
+      });
+      if (res.ok) {
+        const item = document.getElementById('item-' + shortSha);
+        if (item) { item.style.opacity = '0'; item.style.transition = 'opacity .3s'; setTimeout(() => item.remove(), 300); }
+      } else {
+        const err = await res.json();
+        alert('Delete failed: ' + err.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'delete'; }
+      }
+    } catch(e) {
+      alert('Error: ' + e.message);
+      if (btn) { btn.disabled = false; btn.textContent = 'delete'; }
+    }
+  }
 
   function saveToken() {
     const t = document.getElementById('tokenInput').value.trim();
@@ -412,6 +557,115 @@ ${content || '## TL;DR\n\n## Enumeration\n\n## Exploitation\n\n## Privilege Esca
     const el = document.getElementById('statusMsg');
     el.className = `status show ${type}`;
     el.textContent = msg;
+  }
+
+  // ── Image Upload ──────────────────────
+  async function uploadImage(file) {
+    if (!file) return;
+    const token = getToken();
+    if (!token) { showStatus('error', 'Connect GitHub token first.'); return; }
+
+    const status = document.getElementById('imgStatus');
+    status.textContent = '— uploading...';
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result.split(',')[1];
+      const ext = file.name.split('.').pop();
+      const filename = `assets/images/${Date.now()}.${ext}`;
+
+      try {
+        const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${filename}`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `token ${token}`,
+            Accept: 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: `upload: image ${filename}`,
+            content: base64,
+            branch: BRANCH,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const url = data.content.download_url;
+          const md = `\n![${file.name}](${url})\n`;
+          const textarea = document.getElementById('content');
+          const pos = textarea.selectionStart;
+          textarea.value = textarea.value.slice(0, pos) + md + textarea.value.slice(pos);
+          status.textContent = '— uploaded!';
+          setTimeout(() => status.textContent = '', 2000);
+        } else {
+          status.textContent = '— upload failed';
+        }
+      } catch {
+        status.textContent = '— error';
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+
+  // ── Paste Image ───────────────────────
+  async function handlePaste(e) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault();
+        const file = item.getAsFile();
+        const token = getToken();
+        if (!token) { showStatus('error', 'Connect GitHub token first.'); return; }
+
+        const textarea = document.getElementById('content');
+        const pos = textarea.selectionStart;
+        const placeholder = `![uploading...]()`;
+        textarea.value = textarea.value.slice(0, pos) + placeholder + textarea.value.slice(pos);
+
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          const base64 = ev.target.result.split(',')[1];
+          const ext = item.type.split('/')[1] || 'png';
+          const filename = `assets/images/${Date.now()}.${ext}`;
+          try {
+            const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${filename}`, {
+              method: 'PUT',
+              headers: {
+                Authorization: `token ${token}`,
+                Accept: 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                message: `upload: image ${filename}`,
+                content: base64,
+                branch: BRANCH,
+              }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              const url = data.content.download_url;
+              textarea.value = textarea.value.replace(
+                placeholder,
+                `\n![image](${url})\n`
+              );
+              showStatus('success', `Image uploaded: ${filename}`);
+              setTimeout(() => document.getElementById('statusMsg').classList.remove('show'), 3000);
+            } else {
+              textarea.value = textarea.value.replace(placeholder, '');
+              showStatus('error', 'Image upload failed.');
+            }
+          } catch(err) {
+            textarea.value = textarea.value.replace(placeholder, '');
+            showStatus('error', `Upload error: ${err.message}`);
+          }
+        };
+        reader.readAsDataURL(file);
+        break;
+      }
+    }
   }
 
   // ── Init ──────────────────────────────
