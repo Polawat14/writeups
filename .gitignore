@@ -1,0 +1,28 @@
+# Jekyll build output
+_site/
+.jekyll-cache/
+.jekyll-metadata
+
+# Ruby
+.bundle/
+vendor/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Sensitive - NEVER commit these
+*.key
+*.pem
+*.p12
+credentials.txt
+secrets/
+
+# Nmap outputs (keep sanitized versions only)
+nmap/*.xml
+nmap/*.gnmap
+
+# Draft writeups
+_drafts/
+*.draft.md
+TODO.md
