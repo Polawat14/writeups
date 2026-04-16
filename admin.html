@@ -117,6 +117,49 @@
     #imgStatus { color: var(--green2); margin-left: 8px; }
 
 
+
+    /* ── Lock Screen ── */
+    .lock-screen {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 999;
+    }
+    .lock-box {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 2rem 2.25rem;
+      width: 100%; max-width: 360px; text-align: center;
+    }
+    .lock-logo {
+      width: 48px; height: 48px; border: 2px solid var(--green);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-family: "JetBrains Mono", monospace; font-size: 18px; font-weight: 700;
+      color: var(--green); margin: 0 auto 1.25rem;
+    }
+    .lock-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: .25rem; }
+    .lock-sub { font-size: 12px; color: var(--text3); font-family: "JetBrains Mono", monospace; margin-bottom: 1.5rem; }
+    .lock-input-wrap { position: relative; margin-bottom: .75rem; }
+    .lock-input-wrap input {
+      width: 100%; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 6px; color: var(--text); font-family: "JetBrains Mono", monospace;
+      font-size: 14px; padding: 10px 40px 10px 12px; outline: none; text-align: center;
+      letter-spacing: .15em; transition: border-color .15s;
+    }
+    .lock-input-wrap input:focus { border-color: var(--green2); }
+    .lock-input-wrap input.error { border-color: var(--red); animation: shake .3s; }
+    .lock-btn {
+      width: 100%; padding: 10px; background: var(--green2); border: 1px solid var(--green);
+      border-radius: 6px; color: #0d1a0d; font-family: "JetBrains Mono", monospace;
+      font-size: 13px; font-weight: 500; cursor: pointer; transition: background .15s;
+    }
+    .lock-btn:hover { background: var(--green); }
+    .lock-err { font-size: 11px; color: var(--red); font-family: "JetBrains Mono", monospace; margin-top: .5rem; min-height: 16px; }
+    .lock-hint { font-size: 10px; color: var(--text3); font-family: "JetBrains Mono", monospace; margin-top: 1rem; }
+    .lock-hint a { color: var(--green2); cursor: pointer; }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)}
+    }
+
     /* ── Tabs ── */
     .tab-bar { display: flex; gap: 6px; margin-bottom: 1rem; }
     .tab-btn { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; color: var(--text3); font-family: "JetBrains Mono", monospace; font-size: 12px; padding: 7px 16px; cursor: pointer; transition: all .15s; }
@@ -141,6 +184,25 @@
   </style>
 </head>
 <body>
+
+
+<div class="lock-screen" id="lockScreen">
+  <div class="lock-box">
+    <div class="lock-logo">🔒</div>
+    <div class="lock-title">Admin Panel</div>
+    <div class="lock-sub">Security Writeups — Polawat14</div>
+    <div class="lock-input-wrap">
+      <input type="password" id="lockInput" placeholder="enter password"
+        onkeydown="if(event.key==='Enter')checkPassword()"
+        autocomplete="current-password">
+    </div>
+    <button class="lock-btn" onclick="checkPassword()">Unlock</button>
+    <div class="lock-err" id="lockErr"></div>
+    <div class="lock-hint">
+      First time? <a onclick="setPassword()">Set a password</a>
+    </div>
+  </div>
+</div>
 
 <header>
   <div class="logo">⚙</div>
@@ -371,6 +433,47 @@
       alert('Error: ' + e.message);
       if (btn) { btn.disabled = false; btn.textContent = 'delete'; }
     }
+  }
+
+
+  // ── Lock Screen ───────────────────────
+  const LOCK_KEY = 'sw_admin_pass';
+
+  function checkPassword() {
+    const input = document.getElementById('lockInput');
+    const stored = localStorage.getItem(LOCK_KEY);
+    if (!stored) {
+      document.getElementById('lockErr').textContent = 'No password set. Click "Set a password" first.';
+      return;
+    }
+    if (input.value === atob(stored)) {
+      document.getElementById('lockScreen').style.display = 'none';
+      input.value = '';
+      document.getElementById('lockErr').textContent = '';
+    } else {
+      input.classList.add('error');
+      document.getElementById('lockErr').textContent = 'Incorrect password.';
+      setTimeout(() => input.classList.remove('error'), 400);
+      input.value = '';
+    }
+  }
+
+  function setPassword() {
+    const pw = prompt('Set admin password:');
+    if (!pw || pw.trim().length < 4) { alert('Password must be at least 4 characters.'); return; }
+    const confirm = prompt('Confirm password:');
+    if (pw !== confirm) { alert('Passwords do not match.'); return; }
+    localStorage.setItem(LOCK_KEY, btoa(pw));
+    alert('Password set! You can now log in.');
+    document.getElementById('lockErr').textContent = '';
+  }
+
+  function initLock() {
+    const stored = localStorage.getItem(LOCK_KEY);
+    if (!stored) {
+      document.getElementById('lockErr').textContent = 'No password set yet. Click "Set a password".';
+    }
+    document.getElementById('lockInput').focus();
   }
 
   function saveToken() {
@@ -670,6 +773,7 @@ ${content || '## TL;DR\n\n## Enumeration\n\n## Exploitation\n\n## Privilege Esca
 
   // ── Init ──────────────────────────────
   window.addEventListener('DOMContentLoaded', () => {
+    initLock();
     const saved = getToken();
     if (saved) verifyToken(saved);
     updatePath();
